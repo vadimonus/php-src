@@ -61,6 +61,7 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 %precedence T_YIELD
 %precedence T_DOUBLE_ARROW
 %precedence T_YIELD_FROM
+%precedence T_LTR_ASSIGNMENT
 %precedence '=' T_PLUS_EQUAL T_MINUS_EQUAL T_MUL_EQUAL T_DIV_EQUAL T_CONCAT_EQUAL T_MOD_EQUAL T_AND_EQUAL T_OR_EQUAL T_XOR_EQUAL T_SL_EQUAL T_SR_EQUAL T_POW_EQUAL T_COALESCE_EQUAL
 %left '?' ':'
 %right T_COALESCE
@@ -239,6 +240,8 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 %token T_POW             "'**'"
 %token T_POW_EQUAL       "'**='"
 %token T_PIPE         "'|>'"
+%token T_LTR_ASSIGNMENT     "'|=>'"
+
 /* We need to split the & token in two to avoid a shift/reduce conflict. For T1&$v and T1&T2,
  * with only one token lookahead, bison does not know whether to reduce T1 as a complete type,
  * or shift to continue parsing an intersection type. */
@@ -1251,12 +1254,20 @@ expr:
 			{ $$ = $1; }
 	|	T_LIST '(' array_pair_list ')' '=' expr
 			{ $3->attr = ZEND_ARRAY_SYNTAX_LIST; $$ = zend_ast_create(ZEND_AST_ASSIGN, $3, $6); }
+	|	expr T_LTR_ASSIGNMENT T_LIST '(' array_pair_list ')' 
+			{ $5->attr = ZEND_ARRAY_SYNTAX_LIST; $$ = zend_ast_create(ZEND_AST_ASSIGN, $5, $1); }
 	|	'[' array_pair_list ']' '=' expr
 			{ $2->attr = ZEND_ARRAY_SYNTAX_SHORT; $$ = zend_ast_create(ZEND_AST_ASSIGN, $2, $5); }
+	|	expr T_LTR_ASSIGNMENT '[' array_pair_list ']'
+			{ $4->attr = ZEND_ARRAY_SYNTAX_SHORT; $$ = zend_ast_create(ZEND_AST_ASSIGN, $4, $1); }
 	|	variable '=' expr
 			{ $$ = zend_ast_create(ZEND_AST_ASSIGN, $1, $3); }
+	|	expr T_LTR_ASSIGNMENT variable
+			{ $$ = zend_ast_create(ZEND_AST_ASSIGN, $3, $1); }
 	|	variable '=' ampersand variable
 			{ $$ = zend_ast_create(ZEND_AST_ASSIGN_REF, $1, $4); }
+	|	ampersand variable T_LTR_ASSIGNMENT variable
+			{ $$ = zend_ast_create(ZEND_AST_ASSIGN_REF, $4, $2); }
 	|	T_CLONE clone_argument_list {
 			zend_ast *name = zend_ast_create_zval_from_str(ZSTR_KNOWN(ZEND_STR_CLONE));
 			name->attr = ZEND_NAME_FQ;
