@@ -61,6 +61,7 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 %precedence T_YIELD
 %precedence T_DOUBLE_ARROW
 %precedence T_YIELD_FROM
+%precedence T_PIPE_FOLLOWED_BY_EQUAL
 %precedence '=' T_PLUS_EQUAL T_MINUS_EQUAL T_MUL_EQUAL T_DIV_EQUAL T_CONCAT_EQUAL T_MOD_EQUAL T_AND_EQUAL T_OR_EQUAL T_XOR_EQUAL T_SL_EQUAL T_SR_EQUAL T_POW_EQUAL T_COALESCE_EQUAL
 %left '?' ':'
 %right T_COALESCE
@@ -238,7 +239,10 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 %token T_COALESCE        "'??'"
 %token T_POW             "'**'"
 %token T_POW_EQUAL       "'**='"
+/* We need to split the |> token in two to avoid a shift/reduce conflict for T1|>$v and T1|>=$v.
+ * Same as for '&' below */
 %token T_PIPE         "'|>'"
+%token T_PIPE_FOLLOWED_BY_EQUAL         "pipe"
 /* We need to split the & token in two to avoid a shift/reduce conflict. For T1&$v and T1&T2,
  * with only one token lookahead, bison does not know whether to reduce T1 as a complete type,
  * or shift to continue parsing an intersection type. */
@@ -1251,19 +1255,19 @@ expr:
 			{ $$ = $1; }
 	|	T_LIST '(' array_pair_list ')' '=' expr
 			{ $3->attr = ZEND_ARRAY_SYNTAX_LIST; $$ = zend_ast_create(ZEND_AST_ASSIGN, $3, $6); }
-	|	expr T_PIPE '=' T_LIST '(' array_pair_list ')' %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL '=' T_LIST '(' array_pair_list ')' %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $6->attr = ZEND_ARRAY_SYNTAX_LIST; $$ = zend_ast_create(ZEND_AST_ASSIGN, $6, $1); }
 	|	'[' array_pair_list ']' '=' expr
 			{ $2->attr = ZEND_ARRAY_SYNTAX_SHORT; $$ = zend_ast_create(ZEND_AST_ASSIGN, $2, $5); }
-	|	expr T_PIPE '=' '[' array_pair_list ']' %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL '=' '[' array_pair_list ']' %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $5->attr = ZEND_ARRAY_SYNTAX_SHORT; $$ = zend_ast_create(ZEND_AST_ASSIGN, $5, $1); }
 	|	variable '=' expr
 			{ $$ = zend_ast_create(ZEND_AST_ASSIGN, $1, $3); }
-	|	expr T_PIPE '=' variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL '=' variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create(ZEND_AST_ASSIGN, $4, $1); }
 	|	variable '=' ampersand variable
 			{ $$ = zend_ast_create(ZEND_AST_ASSIGN_REF, $1, $4); }
-	|	ampersand variable T_PIPE '=' variable %prec T_PIPE
+	|	ampersand variable T_PIPE_FOLLOWED_BY_EQUAL '=' variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create(ZEND_AST_ASSIGN_REF, $5, $2); }
 	|	T_CLONE clone_argument_list {
 			zend_ast *name = zend_ast_create_zval_from_str(ZSTR_KNOWN(ZEND_STR_CLONE));
@@ -1277,55 +1281,55 @@ expr:
 		}
 	|	variable T_PLUS_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_ADD, $1, $3); }
-	|	expr T_PIPE T_PLUS_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_PLUS_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_ADD, $4, $1); }
 	|	variable T_MINUS_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_SUB, $1, $3); }
-	|	 expr T_PIPE T_MINUS_EQUAL variable %prec T_PIPE
+	|	 expr T_PIPE_FOLLOWED_BY_EQUAL T_MINUS_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_SUB, $4, $1); }
 	|	variable T_MUL_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_MUL, $1, $3); }
-	|	expr T_PIPE T_MUL_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_MUL_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_MUL, $4, $1); }
 	|	variable T_POW_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_POW, $1, $3); }
-	|	expr T_PIPE T_POW_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_POW_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_POW, $4, $1); }
 	|	variable T_DIV_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_DIV, $1, $3); }
-	|	expr T_PIPE T_DIV_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_DIV_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_DIV, $4, $1); }
 	|	variable T_CONCAT_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_CONCAT, $1, $3); }
-	|	expr T_PIPE T_CONCAT_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_CONCAT_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_CONCAT, $4, $1); }
 	|	variable T_MOD_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_MOD, $1, $3); }
-	|	expr T_PIPE T_MOD_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_MOD_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_MOD, $4, $1); }
 	|	variable T_AND_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_BW_AND, $1, $3); }
-	|	expr T_PIPE T_AND_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_AND_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_BW_AND, $4, $1); }
 	|	variable T_OR_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_BW_OR, $1, $3); }
-	|	expr T_PIPE T_OR_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_OR_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_BW_OR, $4, $1); }
 	|	variable T_XOR_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_BW_XOR, $1, $3); }
-	|	expr T_PIPE T_XOR_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_XOR_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_BW_XOR, $4, $1); }
 	|	variable T_SL_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_SL, $1, $3); }
-	|	expr T_PIPE T_SL_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_SL_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_SL, $4, $1); }
 	|	variable T_SR_EQUAL expr
 			{ $$ = zend_ast_create_assign_op(ZEND_SR, $1, $3); }
-	|	expr T_PIPE T_SR_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_SR_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create_assign_op(ZEND_SR, $4, $1); }
 	|	variable T_COALESCE_EQUAL expr
 			{ $$ = zend_ast_create(ZEND_AST_ASSIGN_COALESCE, $1, $3); }
-	|	expr T_PIPE T_COALESCE_EQUAL variable %prec T_PIPE
+	|	expr T_PIPE_FOLLOWED_BY_EQUAL T_COALESCE_EQUAL variable %prec T_PIPE_FOLLOWED_BY_EQUAL
 			{ $$ = zend_ast_create(ZEND_AST_ASSIGN_COALESCE, $4, $1); }
 	|	variable T_INC { $$ = zend_ast_create(ZEND_AST_POST_INC, $1); }
 	|	T_INC variable { $$ = zend_ast_create(ZEND_AST_PRE_INC, $2); }
@@ -1818,6 +1822,14 @@ static YYSIZE_T zend_yytnamerr(char *yyres, const char *yystr)
 			return sizeof("token \"&\"")-1;
 		}
 
+		/* We used "pipe" as a dummy label to avoid a duplicate token literal warning. */
+		if (strcmp(toktype, "\"pipe\"") == 0) {
+			if (yyres) {
+				yystpcpy(yyres, "token \"|>\"");
+			}
+			return sizeof("token \"|>\"")-1;
+		}
+
 		/* Avoid unreadable """ */
 		/* "'" would theoretically be just as bad, but is never currently parsed as a separate token */
 		if (strcmp(toktype, "'\"'") == 0) {
@@ -1917,6 +1929,14 @@ static YYSIZE_T zend_yytnamerr(char *yyres, const char *yystr)
 			yystpcpy(yyres, "token \"&\"");
 		}
 		return sizeof("token \"&\"")-1;
+	}
+
+	/* We used "pipe" as a dummy label to avoid a duplicate token literal warning. */
+	if (strcmp(toktype, "\"pipe\"") == 0) {
+		if (yyres) {
+			yystpcpy(yyres, "token \"|>\"");
+		}
+		return sizeof("token \"|>\"")-1;
 	}
 
 	/* Strip off the outer quote marks */

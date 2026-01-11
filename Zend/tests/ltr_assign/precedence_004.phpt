@@ -25,8 +25,8 @@ $t->a <<=
                 $t->a +=
                     $t->a =
                         2
-                            |> = $t->b
-                            |> += $t->b
+                            |> $t->b
+                            |> $t->b
                             |> *= $t->b
                             |> -= $t->b
                             |> **= $t->b
@@ -34,15 +34,15 @@ $t->a <<=
 
 ?>
 --EXPECTF--
-Assigning b with 2
-Assigning b with 4
-Assigning b with 16
-Assigning b with 0
-Assigning b with 1
-Assigning b with 2
 Assigning a with 2
 Assigning a with 4
 Assigning a with 16
 Assigning a with 0
 Assigning a with 1
 Assigning a with 2
+Assigning b with 2
+Assigning b with 4
+Assigning b with 16
+Assigning b with 0
+Assigning b with 1
+Assigning b with 2

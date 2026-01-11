@@ -12,11 +12,11 @@ class Test {
 
 $t = new Test;
 
-$t->a = $t->b = 42 |> = $t->c |>= $t->d;
+$t->a = $t->b = 42 |>= $t->c |>= $t->d;
 
 ?>
 --EXPECTF--
-Assigning c
-Assigning d
 Assigning b
 Assigning a
+Assigning c
+Assigning d
