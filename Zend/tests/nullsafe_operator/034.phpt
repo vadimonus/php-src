@@ -19,10 +19,6 @@ var_dump($arr['bar']['invalid']?->something);
 ?>
 --EXPECTF--
 NULL
-
-Warning: Undefined array key "invalid" in %s.php on line 11
 NULL
 NULL
-
-Warning: Undefined array key "invalid" in %s.php on line 14
 NULL
