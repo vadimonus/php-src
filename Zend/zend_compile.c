@@ -5512,11 +5512,7 @@ static void zend_compile_method_call(znode *result, zend_ast *ast, uint32_t type
 	} else {
 		zend_short_circuiting_mark_inner(obj_ast);
 		if (nullsafe) {
-			if (zend_is_variable_or_call(obj_ast)) {
-				zend_compile_var(&obj_node, obj_ast, BP_VAR_IS, /* by_ref */ false);
-			} else {
-				zend_compile_expr(&obj_node, obj_ast);
-			}
+			zend_compile_var(&obj_node, obj_ast, BP_VAR_IS, /* by_ref */ false);
 			zend_emit_jmp_null(&obj_node, BP_VAR_IS);
 		} else {
 			zend_compile_expr(&obj_node, obj_ast);
