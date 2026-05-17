@@ -3162,6 +3162,7 @@ static zend_op *zend_delayed_compile_prop(znode *result, zend_ast *ast, uint32_t
 	znode obj_node, prop_node;
 	zend_op *opline;
 	bool nullsafe = ast->kind == ZEND_AST_NULLSAFE_PROP;
+	uint32_t obj_compile_type;
 
 	if (is_this_fetch(obj_ast)) {
 		if (this_guaranteed_exists()) {
@@ -3179,7 +3180,12 @@ static zend_op *zend_delayed_compile_prop(znode *result, zend_ast *ast, uint32_t
 		 * check for a nullsafe access. */
 	} else {
 		zend_short_circuiting_mark_inner(obj_ast);
-		opline = zend_delayed_compile_var(&obj_node, obj_ast, type, false);
+		if (nullsafe && type == BP_VAR_R) {
+			obj_compile_type = BP_VAR_IS;
+		} else {
+			obj_compile_type = type;
+		}
+		opline = zend_delayed_compile_var(&obj_node, obj_ast, obj_compile_type, false);
 		if (opline && (opline->opcode == ZEND_FETCH_DIM_W
 				|| opline->opcode == ZEND_FETCH_DIM_RW
 				|| opline->opcode == ZEND_FETCH_DIM_FUNC_ARG
@@ -3213,7 +3219,7 @@ static zend_op *zend_delayed_compile_prop(znode *result, zend_ast *ast, uint32_t
 					}
 				}
 			}
-			zend_emit_jmp_null(&obj_node, type);
+			zend_emit_jmp_null(&obj_node, obj_compile_type);
 		}
 	}
 
